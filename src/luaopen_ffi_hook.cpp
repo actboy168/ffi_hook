@@ -21,9 +21,36 @@ static int hook_call(lua_State* L) {
 }
 
 static int install(lua_State* L) {
-	luaL_checktype(L, 1, LUA_TUSERDATA);
-	luaL_checktype(L, 2, LUA_TUSERDATA);
-	luaL_checktype(L, 3, LUA_TUSERDATA);
+	luaL_checktype(L, 1, LUA_TFUNCTION);
+	luaL_checktype(L, 2, LUA_TFUNCTION);
+	luaL_checktype(L, 3, LUA_TFUNCTION);
+	lua_settop(L, 3);
+
+	if (!lua_getupvalue(L, 1, 1)) {
+		return luaL_argerror(L, 1, "has no upvalue");
+	}
+	if (lua_type(L, -1) != LUA_TUSERDATA) {
+		return luaL_argerror(L, 1, lua_pushfstring(L, "bad upvalue #1, userdata expected, got %s", luaL_typename(L, -1)));
+	}
+	lua_replace(L, 1);
+
+	size_t fdef_len = 0;
+	const char* fdef = luaL_tolstring(L, 1, &fdef_len);
+	if (!fdef || fdef_len <= 7) {
+		return luaL_argerror(L, 1, "bad upvalue #1, can't get define");
+	}
+	lua_pushlstring(L, fdef + 6, fdef_len - 7);
+	lua_remove(L, -2);
+
+	lua_pushvalue(L, 3);
+	lua_pushvalue(L, 4);
+	lua_pushvalue(L, 2);
+	lua_call(L, 2, 1);
+	lua_replace(L, 2);
+
+	lua_pushnil(L);
+	lua_call(L, 2, 1);
+
 	hook_t* h = (hook_t*)lua_newuserdata(L, sizeof hook_t);
 	if (!h) {
 		return 0;
