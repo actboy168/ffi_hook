@@ -2,8 +2,8 @@
 local ffi = require 'ffi'
 local hk = require 'ffi_hook'
 
-function ffi.hook(real, fake)
-    return hk.install(real, fake, ffi.new)
+function ffi.hook(target, detour)
+    return hk.install(target, detour, ffi.new)
 end
 
 function ffi.unhook(h)
@@ -11,14 +11,43 @@ function ffi.unhook(h)
 end
 
 ffi.cdef [[
-    int __stdcall MessageBoxA(int hWnd, const char* lpText, const char* lpCaption, unsigned int uType);
+    typedef unsigned int HANDLE;
+    typedef unsigned int DWORD;
+    typedef unsigned int LPSECURITY_ATTRIBUTES;
+    typedef const char* LPCSTR;
+    typedef const wchar_t* LPWCSTR;
+
+    HANDLE __stdcall CreateFileA(
+        LPCSTR                lpFileName,
+        DWORD                 dwDesiredAccess,
+        DWORD                 dwShareMode,
+        LPSECURITY_ATTRIBUTES lpSecurityAttributes,
+        DWORD                 dwCreationDisposition,
+        DWORD                 dwFlagsAndAttributes,
+        HANDLE                hTemplateFile
+      );
+      HANDLE __stdcall CreateFileW(
+          LPWCSTR               lpFileName,
+          DWORD                 dwDesiredAccess,
+          DWORD                 dwShareMode,
+          LPSECURITY_ATTRIBUTES lpSecurityAttributes,
+          DWORD                 dwCreationDisposition,
+          DWORD                 dwFlagsAndAttributes,
+          HANDLE                hTemplateFile
+        );
 ]]
 
+local uni = require 'unicode'
 
-local realMessageBoxA 
-realMessageBoxA = ffi.hook(ffi.C.MessageBoxA, function(hwnd, text, title, type)
-    return realMessageBoxA(hwnd, 'Hello ' .. ffi.string(text), ffi.string(title), type)
+local hook = {}
+
+hook.CreateFileA = ffi.hook(ffi.C.CreateFileA, function(filename, ...)
+    print('CreateFileA', ffi.string(lpFileName))
+    return hook.CreateFileA(ffi.string(lpFileName), ...)
 end)
-ffi.C.MessageBoxA(0, 'Test', 'Title', 0)
-ffi.unhook(realMessageBoxA)
-ffi.C.MessageBoxA(0, 'Test', 'Title', 0)
+hook.CreateFileW = ffi.hook(ffi.C.CreateFileW, function(filename, ...)
+    print('CreateFileW', uni.w2u(filename))
+    return hook.CreateFileW(filename, ...)
+end)
+
+print(io.open('main.lua'))
