@@ -4,7 +4,7 @@
 
 ``` lua
 local ffi = require 'ffi'
-local hk = require 'ffi_hook'
+local hk = require 'hook'
 
 hk.initialize(ffi.new)
 
