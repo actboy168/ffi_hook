@@ -1,13 +1,10 @@
-
 local ffi = require 'ffi'
-local hk = require 'ffi_hook'
+local hk = require 'hook'
+
+hk.initialize(ffi.new)
 
 function ffi.hook(target, detour)
-    return hk.install(target, detour, ffi.new)
-end
-
-function ffi.unhook(h)
-    hk.uninstall(h)
+    return hk.inline(target, detour)
 end
 
 ffi.cdef [[
@@ -42,8 +39,8 @@ local uni = require 'unicode'
 local hook = {}
 
 hook.CreateFileA = ffi.hook(ffi.C.CreateFileA, function(filename, ...)
-    print('CreateFileA', ffi.string(lpFileName))
-    return hook.CreateFileA(ffi.string(lpFileName), ...)
+    print('CreateFileA', ffi.string(filename))
+    return hook.CreateFileA(ffi.string(filename), ...)
 end)
 hook.CreateFileW = ffi.hook(ffi.C.CreateFileW, function(filename, ...)
     print('CreateFileW', uni.w2u(filename))
