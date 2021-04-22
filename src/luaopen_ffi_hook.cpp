@@ -1,5 +1,6 @@
 #include <lua.hpp>
 #include "inline.h"
+#include <memory>
 //#include <base/hook/iat.h>
 //#include <bee/utility/unicode_win.h>	
 

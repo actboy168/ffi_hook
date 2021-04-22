@@ -2,27 +2,44 @@ local lm = require 'luamake'
 
 lm:import '3rd/bee.lua/make.lua'
 
-lm:build 'ffi_dynasm' {
-    '$luamake', 'lua', 'make/ffi_dynasm.lua',
-    output = "3rd/bee.lua/3rd/luaffi/src/call_x86.h",
-}
+lm.rootdir = "3rd/luaffi"
+
+local function dynasm(output, input, flags)
+    lm:build ("dynasm_"..output) {
+        "$luamake", "lua", "@src/dynasm/dynasm.lua",
+        "-LNE",
+        flags or {},
+        "-o", "@src/"..output,
+        "@src/"..input,
+        output = "src/"..output,
+    }
+end
+
+dynasm('call_x86.h', 'call_x86.dasc', {'-D', 'X32WIN'})
+dynasm('call_x64.h', 'call_x86.dasc', {'-D', 'X64'})
+dynasm('call_x64win.h', 'call_x86.dasc', {'-D', 'X64', '-D', 'X64WIN'})
+dynasm('call_arm.h', 'call_arm.dasc')
 
 lm:phony {
-    input = "3rd/bee.lua/3rd/luaffi/src/call_x86.h",
-    output = "3rd/bee.lua/3rd/luaffi/src/call.c",
+    input = {
+        "src/call_x86.h",
+        "src/call_x64.h",
+        "src/call_x64win.h",
+        "src/call_arm.h",
+    },
+    output = "src/call.c",
 }
 
-lm:shared_library 'ffi' {
-    deps = {
-        'lua54',
-        'ffi_dynasm'
-    },
+lm:lua_library "ffi" {
+    luaversion = "lua54",
     sources = {
-        '3rd/bee.lua/3rd/luaffi/src/*.c',
-        '!3rd/bee.lua/3rd/luaffi/src/test.c',
+        "src/*.c",
+        "!src/test.c",
     },
-    ldflags = '/EXPORT:luaopen_ffi'
+    ldflags = "/EXPORT:luaopen_ffi"
 }
+
+lm.rootdir = "."
 
 lm:source_set 'detours' {
     rootdir = "3rd/detours/src",
@@ -33,16 +50,14 @@ lm:source_set 'detours' {
     }
 }
 
-lm:shared_library 'hook' {
+lm:lua_dll 'hook' {
     deps = {
-        'lua54',
         'detours',
     },
     sources = {
         'src/luaopen_ffi_hook.cpp',
         'src/inline.cpp',
     },
-    ldflags = '/EXPORT:luaopen_hook'
 }
 
 lm:default {
